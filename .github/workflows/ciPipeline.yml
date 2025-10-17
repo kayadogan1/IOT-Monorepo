@@ -9,9 +9,7 @@ on:
 # Ortam değişkenleri: İmaj isimlerini kolayca yönetmek için
 env:
   # GitHub Container Registry (GHCR) adresini tanımla
-  # GITHUB_REPOSITORY değişkeni otomatik olarak "kullanici-adin/repo-adin" formatındadır
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
 
 jobs:
   build-and-push-images:
@@ -28,7 +26,13 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 2. Adım: GHCR'a (GitHub Container Registry) giriş yap
+      # 2. Adım: İmaj ismini küçük harfe çevir
+      - name: Set lowercase image name
+        id: image_name
+        run: |
+          echo "value=$(echo ${{ github.repository }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
+
+      # 3. Adım: GHCR'a (GitHub Container Registry) giriş yap
       - name: Log in to the Container registry
         uses: docker/login-action@v3
         with:
@@ -36,39 +40,39 @@ jobs:
           username: ${{ github.actor }} # Otomatik olarak senin kullanıcı adın
           password: ${{ secrets.GITHUB_TOKEN }} # Otomatik olarak oluşturulan bir token
 
-      # 3. Adım: Docker imajları için Buildx'i kur (gelişmiş build aracı)
+      # 4. Adım: Docker imajları için Buildx'i kur (gelişmiş build aracı)
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      # 4. Adım: Spring Boot İmajını Build & Push et
+      # 5. Adım: Spring Boot İmajını Build & Push et
       - name: Build and push Spring Boot image
         uses: docker/build-push-action@v5
         with:
           context: ./spring-subscriber
           file: ./spring-subscriber/Dockerfile
           push: true
-          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/spring-subscriber:latest
+          tags: ${{ env.REGISTRY }}/${{ steps.image_name.outputs.value }}/spring-subscriber:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      # 5. Adım: Python Publisher İmajını Build & Push et
+      # 6. Adım: Python Publisher İmajını Build & Push et
       - name: Build and push Python image
         uses: docker/build-push-action@v5
         with:
           context: ./python-publisher
           file: ./python-publisher/Dockerfile
           push: true
-          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/python-publisher:latest
+          tags: ${{ env.REGISTRY }}/${{ steps.image_name.outputs.value }}/python-publisher:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      # 6. Adım: Mosquitto İmajını Build & Push et
+      # 7. Adım: Mosquitto İmajını Build & Push et
       - name: Build and push Mosquitto image
         uses: docker/build-push-action@v5
         with:
           context: ./mosquitto
           file: ./mosquitto/Dockerfile
           push: true
-          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/mosquitto:latest
+          tags: ${{ env.REGISTRY }}/${{ steps.image_name.outputs.value }}/mosquitto:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
