@@ -1,0 +1,49 @@
+# Docker Compose dosya formatının versiyonu
+version: '3.8'
+
+# Çalıştırılacak servisleri (konteynerleri) tanımlıyoruz
+services:
+  
+  # 1. Mosquitto Servisi (Broker)
+  mosquitto:
+    # Dockerfile'ın nerede olduğunu belirtir
+    build: ./mosquitto
+    ports:
+      # Konteynerin 1883 portunu, kendi bilgisayarımızın 1883 portuna bağla.
+      # Bu, MQTTX gibi dışarıdan bağlanmamızı sağlar.
+      - "1883:1883"
+    networks:
+      # Bu servisi "iot-network" ağına dahil et
+      - iot-network
+
+  # 2. Spring Boot Servisi (Abone)
+  spring-subscriber:
+    # Dockerfile'ın nerede olduğunu belirtir
+    build: ./spring-subscriber
+    depends_on:
+      # Başlamadan önce "mosquitto" servisinin başlamasını bekle
+      - mosquitto
+    networks:
+      # Bu servisi "iot-network" ağına dahil et
+      - iot-network
+    # Yeniden başlatma politikası: Bir hata olursa yeniden başlat
+    restart: on-failure
+
+  # 3. Python Servisi (Yayıncı)
+  python-publisher:
+    # Dockerfile'ın nerede olduğunu belirtir
+    build: ./python-publisher
+    depends_on:
+      # Başlamadan önce "mosquitto" servisinin başlamasını bekle
+      - mosquitto
+    networks:
+      # Bu servisi "iot-network" ağına dahil et
+      - iot-network
+    # Yeniden başlatma politikası: Bir hata olursa yeniden başlat
+    restart: on-failure
+
+# Servislerin birbirleriyle konuşmasını sağlayacak ortak ağı tanımlıyoruz
+networks:
+  iot-network:
+    # "bridge" sürücüsü, standart bir özel ağ oluşturur
+    driver: bridge

@@ -1,0 +1,15 @@
+# İşletim Sistemi ve IDE
+.DS_Store
+.idea/
+.vscode/
+
+# Maven (Java)
+/spring-subscriber/target/
+/spring-subscriber/*.iml
+
+# Python
+/python-publisher/__pycache__/
+/python-publisher/*.pyc
+
+# Docker (varsa)
+.dockerignore
