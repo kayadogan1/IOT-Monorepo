@@ -2,43 +2,70 @@ import paho.mqtt.client as mqtt
 import time
 import json
 import random
+import os
 
-# Mosquitto Broker Ayarları
 BROKER_ADDRESS = "mosquitto"
 PORT = 1883
 TOPIC = "sensor/data"
 
-# Client oluştur ve broker'a bağlan
-client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION1,"SensorSimulator")
-client.connect(BROKER_ADDRESS, PORT)
+# İstemci Ayarları
+client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, "PythonSimulator")
 
-print("Simülatör başlatıldı. Veri gönderiliyor...")
+def on_connect(client, userdata, flags, rc, properties=None):
+    if rc == 0:
+        print(f"✅ Broker'a bağlanıldı: {BROKER_ADDRESS}")
+    else:
+        print(f"❌ Bağlantı hatası! Kodu: {rc}")
+
+client.on_connect = on_connect
+
+print(f"Simülatör başlatılıyor... Hedef: {BROKER_ADDRESS}")
 
 try:
+    client.connect(BROKER_ADDRESS, PORT, 60)
+    client.loop_start() # Arka planda ağ trafiğini yönet
+
     while True:
-        # Rastgele sensör verileri üret
-        temperature = round(random.uniform(20.0, 30.0), 2)
-        humidity = round(random.uniform(40.0, 60.0), 2)
-        Pressure = round(random.uniform(1000.0, 1025.0), 2)
-        AirQuality = round(random.uniform(0.0, 500.0), 2)
-        Co2 = round(random.uniform(300.0, 600.0), 2)
+        # Rastgele bir sensör tipi seç (Polymorphism test etmek için)
+        sensor_choice = random.choice(["AirQuality", "Distance", "Ldr"])
+        payload = {}
+
+        # 1. Hava Kalitesi Verisi
+        if sensor_choice == "AirQuality":
+            payload = {
+                "sensorType": "AirQuality", # Spring'deki Switch buna bakıyor
+                "sensorName": "Salon Hava Sensörü",
+                "data": round(random.uniform(50.0, 500.0), 2)
+            }
         
-        # Veriyi JSON formatına çevir
-        payload = {
-            "deviceId": "sensor-001",
-            "temperature": temperature,
-            "humidity": humidity,
-            "timestamp": time.time()
-        }
+        # 2. Mesafe Verisi
+        elif sensor_choice == "Distance":
+            payload = {
+                "sensorType": "Distance",
+                "sensorName": "Garaj Mesafe Sensörü",
+                "data": round(random.uniform(10.0, 300.0), 2) # cm cinsinden
+            }
+
+        # 3. Işık (LDR) Verisi
+        elif sensor_choice == "Ldr":
+            payload = {
+                "sensorType": "Ldr",
+                "sensorName": "Bahçe Işık Sensörü",
+                "data": round(random.uniform(0.0, 1023.0), 2)
+            }
+
+        # JSON'a çevir ve gönder
+        json_data = json.dumps(payload)
+        client.publish(TOPIC, json_data)
         
-        # JSON'ı string'e çevirerek yayınla
-        client.publish(TOPIC, json.dumps(payload))
+        print(f"📤 Gönderildi: {json_data}")
         
-        print(f"Gönderildi -> {json.dumps(payload)}")
-        
-        # 5 saniye bekle
-        time.sleep(5)
+        # 2 saniye bekle (Veri akışını görebilmek için)
+        time.sleep(2)
 
 except KeyboardInterrupt:
-    print("Simülasyon durduruldu.")
+    print("\n🛑 Simülasyon durduruldu.")
+    client.loop_stop()
     client.disconnect()
+except Exception as e:
+    print(f"Bir hata oluştu: {e}")

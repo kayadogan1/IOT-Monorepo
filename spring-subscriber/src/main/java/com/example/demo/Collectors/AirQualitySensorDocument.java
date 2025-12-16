@@ -1,15 +1,17 @@
-package com.example.demo.ElasticRepos;
+package com.example.demo.Collectors;
 
 import org.springframework.data.annotation.Id;
+import org.springframework.data.elasticsearch.annotations.DateFormat;
 import org.springframework.data.elasticsearch.annotations.Document;
+import org.springframework.data.elasticsearch.annotations.Field;
+import org.springframework.data.elasticsearch.annotations.FieldType;
 
 import java.time.LocalDateTime;
-import java.util.UUID;
 
 @Document(indexName = "air_quality_sensors")
 public class AirQualitySensorDocument {
     @Id
-    private UUID Id;
+    private String Id;
 
     private String sensorName;
 
@@ -17,18 +19,23 @@ public class AirQualitySensorDocument {
 
     private float data;
 
-
+    @Field(type= FieldType.Date, format = DateFormat.date_time)
     private LocalDateTime currentDataTime;
-    
+    public AirQualitySensorDocument(String id,LocalDateTime createdTime ,String sensorName, String sensorType, float data) {
+        this.Id = id;
+        this.currentDataTime = createdTime;
+        this.sensorName = sensorName;
+        this.sensorType = sensorType;
+        this.data = data;
+    }
     public AirQualitySensorDocument() {
-
     }
 
-    public UUID getId() {
+    public String getId() {
         return Id;
     }
 
-    public void setId(UUID id) {
+    public void setId(String id) {
         Id = id;
     }
 

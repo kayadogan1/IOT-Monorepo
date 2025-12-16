@@ -1,49 +1,98 @@
-# Docker Compose dosya formatının versiyonu
-version: '3.8'
+version: "3.8"
 
-# Çalıştırılacak servisleri (konteynerleri) tanımlıyoruz
 services:
-  
-  # 1. Mosquitto Servisi (Broker)
+
   mosquitto:
-    # Dockerfile'ın nerede olduğunu belirtir
     build: ./mosquitto
+    container_name: iot_mosquitto
     ports:
-      # Konteynerin 1883 portunu, kendi bilgisayarımızın 1883 portuna bağla.
-      # Bu, MQTTX gibi dışarıdan bağlanmamızı sağlar.
       - "1883:1883"
     networks:
-      # Bu servisi "iot-network" ağına dahil et
       - iot-network
 
-  # 2. Spring Boot Servisi (Abone)
+  postgre:
+    image: postgres:15
+    container_name: iot_postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 253421
+      POSTGRES_DB: sensor_db
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - iot-network
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.1
+    container_name: iot_elastic
+    environment:
+      discovery.type: single-node
+      ES_JAVA_OPTS: -Xms512m -Xmx512m
+      xpack.security.enabled: "false"
+    ports:
+      - "9200:9200"
+    volumes:
+      - es-data:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+    networks:
+      - iot-network
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.11.1
+    container_name: iot_kibana
+    environment:
+      ELASTICSEARCH_HOSTS: http://elasticsearch:9200
+    ports:
+      - "5601:5601"
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    networks:
+      - iot-network
+
   spring-subscriber:
-    # Dockerfile'ın nerede olduğunu belirtir
     build: ./spring-subscriber
+    container_name: iot_spring
     depends_on:
-      # Başlamadan önce "mosquitto" servisinin başlamasını bekle
-      - mosquitto
+      mosquitto:
+        condition: service_started
+      postgre:
+        condition: service_started
+      elasticsearch:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgre:5432/sensor_db
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: 253421
+      SPRING_ELASTICSEARCH_URIS: http://elasticsearch:9200
+      MQTT_BROKER_URL: tcp://mosquitto:1883
+      MQTT_CLIENT_ID: SpringBootSubscriber
     networks:
-      # Bu servisi "iot-network" ağına dahil et
       - iot-network
-    # Yeniden başlatma politikası: Bir hata olursa yeniden başlat
     restart: on-failure
 
-  # 3. Python Servisi (Yayıncı)
   python-publisher:
-    # Dockerfile'ın nerede olduğunu belirtir
     build: ./python-publisher
+    container_name: iot_python_publisher
     depends_on:
-      # Başlamadan önce "mosquitto" servisinin başlamasını bekle
-      - mosquitto
+      mosquitto:
+        condition: service_started
+    environment:
+      MQTT_BROKER: mosquitto
     networks:
-      # Bu servisi "iot-network" ağına dahil et
       - iot-network
-    # Yeniden başlatma politikası: Bir hata olursa yeniden başlat
     restart: on-failure
 
-# Servislerin birbirleriyle konuşmasını sağlayacak ortak ağı tanımlıyoruz
+volumes:
+  postgres-data:
+  es-data:
+
 networks:
   iot-network:
-    # "bridge" sürücüsü, standart bir özel ağ oluşturur
     driver: bridge
