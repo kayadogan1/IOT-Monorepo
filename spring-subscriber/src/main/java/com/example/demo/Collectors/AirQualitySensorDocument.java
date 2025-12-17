@@ -12,14 +12,14 @@ import java.time.LocalDateTime;
 public class AirQualitySensorDocument {
     @Id
     private String Id;
-
+    @Field(type = FieldType.Keyword)
     private String sensorName;
-
+    @Field(type = FieldType.Keyword)
     private String sensorType;
-
+    @Field(type = FieldType.Float)
     private float data;
 
-    @Field(type= FieldType.Date, format = DateFormat.date_time)
+    @Field(type= FieldType.Date, format = DateFormat.date_hour_minute_second)
     private LocalDateTime currentDataTime;
     public AirQualitySensorDocument(String id,LocalDateTime createdTime ,String sensorName, String sensorType, float data) {
         this.Id = id;
@@ -30,7 +30,12 @@ public class AirQualitySensorDocument {
     }
     public AirQualitySensorDocument() {
     }
-
+    public LocalDateTime getCurrentDataTime() {
+        return currentDataTime;
+    }
+    public void setCurrentDataTime(LocalDateTime currentDataTime) {
+        this.currentDataTime = currentDataTime;
+    }
     public String getId() {
         return Id;
     }

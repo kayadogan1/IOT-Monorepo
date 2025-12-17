@@ -12,13 +12,13 @@ import java.time.LocalDateTime;
 public class LdrSensorDocument {
     @Id
     private String Id;
-
+    @Field(type = FieldType.Keyword)
     private String sensorName;
-
+    @Field(type = FieldType.Keyword)
     private String sensorType;
-
+    @Field(type = FieldType.Float)
     private float data;
-    @Field(type= FieldType.Date, format = DateFormat.date_time)
+    @Field(type= FieldType.Date, format = DateFormat.date_hour_minute_second)
     private LocalDateTime currentDataTime;
     public LdrSensorDocument(String id,LocalDateTime currentDataTime, String sensorName, String sensorType, float data) {
         this.currentDataTime = currentDataTime;
